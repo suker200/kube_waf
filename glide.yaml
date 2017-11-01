@@ -1,0 +1,15 @@
+package: kube_waf
+import:
+- package: k8s.io/ingress/core/pkg/net 
+  version: master
+- package: k8s.io/client-go/kubernetes
+  version: release-4.0
+- package: github.com/imdario/mergo
+  version: master
+- package: k8s.io/apimachinery #/pkg/runtime
+  version: 917740426ad66ff818da4809990480bcc0786a77
+# - package: github.com/jinzhu/copier
+#   version: master
+- package: k8s.io/kubernetes
+  version: release-1.7
+
