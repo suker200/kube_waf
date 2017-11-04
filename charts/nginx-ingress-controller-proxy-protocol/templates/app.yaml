@@ -126,39 +126,6 @@ spec:
 {{ .Values.volumes.global_mount | indent 8 }}
 #       nodeSelector:
 # {{ toYaml .Values.nodeSelector | indent 8 }}
-##### Service
-# {{- if .Values.service }}
-# {{- if .Values.service.internalPort }}
-# ---
-# apiVersion: v1
-# kind: Service
-# metadata:
-#   name: {{ .Chart.Name }}
-#   # annotations:
-#   #   service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
-#   #   service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "arn:aws:acm:us-east-1:315962882822:certificate/3f35a4b6-2c85-434c-a57a-c0f4520f82de"
-#   #   service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
-#   #   service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "http"
-#   #   service.beta.kubernetes.io/aws-load-balancer-connection-draining-timeout: "300"
-#   #   service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "300"
-#   labels:
-#     app: {{ .Chart.Name }}
-#   namespace: {{ .Values.brand }}
-# spec:
-#   type: ClusterIP
-#   ports:
-#   - name: "http"
-#     port: 80
-#     targetPort: 81
-#     protocol: "TCP"
-#   - name: "https"
-#     port: 443
-#     targetPort: 81  
-#     protocol: "TCP"
-#   selector:
-#     app: {{ .Chart.Name }}
-# # {{ end }}
-# # {{ end }}
 ##### Autoscaling
 {{- if .Values.autoScaling }}
 ---
