@@ -1,5 +1,5 @@
 hash: 213fb333590e359195582ddcf7aff6b54acec57f2c9e6e3976e641b5759d9112
-updated: 2017-09-03T01:42:28.676408808+07:00
+updated: 2017-11-03T16:49:29.533160116+07:00
 imports:
 - name: github.com/davecgh/go-spew
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
@@ -34,7 +34,7 @@ imports:
 - name: github.com/google/gofuzz
   version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
 - name: github.com/imdario/mergo
-  version: e3000cb3d28c72b837601cac94debd91032d19fe
+  version: 7fe0c75c13abdee74b09fcacef5ea1c6bba6a874
 - name: github.com/juju/ratelimit
   version: 5b9ff866471762aa2ab2dced63c9fb6f53921342
 - name: github.com/mailru/easyjson
@@ -44,7 +44,9 @@ imports:
   - jlexer
   - jwriter
 - name: github.com/miekg/dns
-  version: e4205768578dc90c2669e75a2f8a8bf77e3083a4
+  version: a5852667e3c36e2e0b0a69ab43869e00e95aacdf
+  subpackages:
+  - internal/socket
 - name: github.com/PuerkitoBio/purell
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
@@ -58,10 +60,12 @@ imports:
 - name: golang.org/x/net
   version: f2499483f923065a842d38eb4c7f1927e6fc6e6d
   subpackages:
-  - http2
-  - http2/hpack
   - idna
   - lex/httplex
+- name: golang.org/x/net/http2
+  version: f2499483f923065a842d38eb4c7f1927e6fc6e6d
+  subpackages:
+  - hpack
 - name: golang.org/x/text
   version: 2910a502d2bf9e43193af9d68ca516529614eed3
   subpackages:
@@ -177,9 +181,9 @@ imports:
   - util/flowcontrol
   - util/integer
 - name: k8s.io/ingress
-  version: cda42f93c7faad78fa2045527d887c76fec2eab0
+  version: 6e0f50f91befc7b427be9ee1da4ccf097bf8e685
   subpackages:
   - core/pkg/net
 - name: k8s.io/kubernetes
-  version: ce630cdb7759f202058abbe0780cd229432c3eef
+  version: 3f573516fbbf05bf28a463773192773debf060a7
 testImports: []

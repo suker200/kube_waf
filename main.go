@@ -57,7 +57,7 @@ func APISOutClusterConfig() *rest.Config {
 		},
 		ContentConfig: rest.ContentConfig{
 			GroupVersion: &schema.GroupVersion{
-				Group:   "misfit.com",
+				Group:   "suker200.com",
 				Version: "v1",
 			},
 		},
@@ -286,7 +286,7 @@ func main() {
 		CRD_Namespace = "devops"
 		CRD_Kind = "Nginxcert"
 		CRD_Plural = "nginxcerts"
-		CRD_Group = "misfit.com"
+		CRD_Group = "suker200.com"
 		CRD_Group_Version = "v1"
 		WAFName = *waf_name
 	} else {

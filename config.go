@@ -17,7 +17,7 @@ import (
 )
 
 // func Get(rclient *dynamic.ResourceClient) {
-// 	a, err := rclient.Get("build.int.misfit.com", metav1.GetOptions{})
+// 	a, err := rclient.Get("build.int.suker200.com", metav1.GetOptions{})
 // 	if err != nil {
 // 		fmt.Println("Failed")
 // 		fmt.Println(err.Error())

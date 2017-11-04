@@ -1,0 +1,44 @@
+apiVersion: "suker200.com/v1"
+kind: Nginxcert
+metadata:
+  name: test.suker200.com
+  labels:
+    waf_name: "nginx-waf-proxy-protocol" # which you define in charts/values.yaml
+  # namespace: kube-system
+spec:
+  waf_name: "nginx-waf-proxy-protocol"
+  block_type: "server"
+  server:
+    ssl-secret: test-cert # your secret cert name in test_cert_secret.yaml
+    domains: 
+      - test.suker200.com # your domain which serve over https
+    domain_redirect:
+      test_2.suker200.com: test.suker200.com # which domain you want to redirect
+    proxy-connect-timeout: 312
+    proxy-send-timeout: 312
+    proxy-read-timeout: 312
+    proxy-buffer-size: "8k"
+    proxy-buffers: "8k"
+    set-real-ip-from: "10.0.0.0/16"
+    gzip-types: |-
+      font/opentype
+      image/svg+xml
+      image/x-icon
+      text/x-component
+      text/plain
+      text/html
+      text/xml
+      text/css
+      application/xml
+      application/xhtml+xml
+      application/rss+xml
+      application/atom_xml
+      application/javascript
+      application/x-javascript
+      application/x-httpd-php
+      application/vnd.ms-fontobject
+      application/x-font-ttf
+      application/x-web-app-manifest+json
+      hehe
+      ohoho
+    waf-event-log-buffer-size: 1000000

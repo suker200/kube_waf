@@ -1,0 +1,177 @@
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: {{ .Chart.Name }} 
+  namespace: kube-system
+spec:
+  replicas: {{ .Values.replicaCount | default 1 }}
+  minReadySeconds: {{ .Values.minReadySeconds | default 5 }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit | default 3 }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/path: '/metrics'
+        prometheus.io/port: '10254'
+    spec:
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: type
+                operator: In
+                values:
+                - nginxgw
+              - key: role
+                operator: In
+                values:
+                - proxy-protocol
+      serviceAccountName: {{ .Chart.Name }}-ingress-controller
+      hostNetwork: true
+      containers:
+      ############################
+      - name: {{ .Chart.Name }}-waf
+        image: {{ .Values.WAFimage }}
+        imagePullPolicy: Always
+{{- if .Values.runningCommand }}
+        command: {{ .Values.runningCommand }}
+{{ end }}
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "touch /tmp/terminated && sleep {{ .Values.terminationGracePeriodSeconds }}"]
+        readinessProbe:
+          tcpSocket:
+            port: 4443
+        livenessProbe:
+          tcpSocket:
+            port: 4443
+          initialDelaySeconds: 60
+          timeoutSeconds: 1
+        ports:
+        - containerPort: 4443
+          hostPort: 4443
+        env:
+        {{- range .Values.env }}
+        - name: {{ .name }}
+          valueFrom:
+            fieldRef:
+              fieldPath: {{ .value | quote -}}
+        {{ end }}
+        volumeMounts:
+{{ .Values.volumes.waf | indent 8 -}}
+{{- if .Values.resources }}
+        resources:
+{{ toYaml .Values.resources | indent 12 }}
+{{ end }}
+      ############################
+      - name: {{ .Chart.Name }}
+        image: {{ .Values.image }}
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep {{ .Values.terminationGracePeriodSeconds }}"]
+{{- if .Values.runningCommand }}
+        command: {{ .Values.runningCommand }}
+{{ end }}
+        args:
+        - /nginx-ingress-controller
+        - --default-backend-service=$(POD_NAMESPACE)/{{ .Chart.Name }}-default-http-backend
+        - --configmap=$(POD_NAMESPACE)/{{ .Chart.Name }}-nginx-load-balancer-conf
+        # - --kubeconfig=/etc/kubernetes/kubeconfig
+        - --ingress-class={{ .Values.IngressType }}
+        env:
+        {{- range .Values.env }}
+        - name: {{ .name }}
+          valueFrom:
+            fieldRef:
+              fieldPath: {{ .value | quote -}}
+        {{ end }}
+        {{- range .Values.Env }}
+        - name: {{ .name }}
+          value: {{ .value | quote -}}
+        {{ end }}
+        volumeMounts:
+{{ .Values.volumes.ingress | indent 8 }}
+        ports:
+        - containerPort: 80
+          hostPort: {{ .Values.HostPort }}
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 10254
+            scheme: HTTP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 10254
+            scheme: HTTP
+          initialDelaySeconds: 10
+          timeoutSeconds: 1
+{{- if .Values.resources }}
+        resources:
+{{ toYaml .Values.resources | indent 12 }}
+{{ end }}      
+      volumes:
+{{ .Values.volumes.global_mount | indent 8 }}
+#       nodeSelector:
+# {{ toYaml .Values.nodeSelector | indent 8 }}
+##### Service
+# {{- if .Values.service }}
+# {{- if .Values.service.internalPort }}
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: {{ .Chart.Name }}
+#   # annotations:
+#   #   service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+#   #   service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "arn:aws:acm:us-east-1:315962882822:certificate/3f35a4b6-2c85-434c-a57a-c0f4520f82de"
+#   #   service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
+#   #   service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "http"
+#   #   service.beta.kubernetes.io/aws-load-balancer-connection-draining-timeout: "300"
+#   #   service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "300"
+#   labels:
+#     app: {{ .Chart.Name }}
+#   namespace: {{ .Values.brand }}
+# spec:
+#   type: ClusterIP
+#   ports:
+#   - name: "http"
+#     port: 80
+#     targetPort: 81
+#     protocol: "TCP"
+#   - name: "https"
+#     port: 443
+#     targetPort: 81  
+#     protocol: "TCP"
+#   selector:
+#     app: {{ .Chart.Name }}
+# # {{ end }}
+# # {{ end }}
+##### Autoscaling
+{{- if .Values.autoScaling }}
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Chart.Name }}
+spec:
+  scaleTargetRef:
+    apiVersion: extensions/v1beta1
+    kind: Deployment
+    name: {{ .Chart.Name }}
+  minReplicas: {{ .Values.autoScaling.minReplicas | default 2 }}
+  maxReplicas: {{ .Values.autoScaling.maxReplicas | default 10 }}
+  targetCPUUtilizationPercentage: {{ .Values.autoScaling.targetCPUUtilizationPercentage | default 80 }}
+{{ end -}}

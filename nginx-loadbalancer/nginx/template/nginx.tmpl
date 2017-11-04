@@ -1,0 +1,408 @@
+{{ $http := .Http }}
+{{ $servers := .Servers }}
+
+daemon off;
+
+pid /usr/local/openresty/nginx/logs/nginx.pid;
+worker_processes  auto;
+worker_rlimit_nofile 100000;
+
+events {
+    use epoll;
+    accept_mutex off;
+    multi_accept on;
+}
+
+http {
+    {{/* we use the value of the header X-Forwarded-For to be able to use the geo_ip module */}}
+
+    {{ if $http.UseProxyProtocol }}
+    real_ip_header      proxy_protocol;
+    {{ else }}
+    real_ip_header      X-Forwarded-For;
+    {{ end }}
+
+    set_real_ip_from    {{ $http.ProxyRealIPCIDR }};
+    real_ip_recursive   on;
+
+    {{/* databases used to determine the country depending on the client IP address */}}
+    {{/* http://nginx.org/en/docs/http/ngx_http_geoip_module.html */}}
+    {{/* this is require to calculate traffic for individual country using GeoIP in the status page */}}
+    # geoip_country       /etc/nginx/GeoIP.dat;
+    # geoip_city          /etc/nginx/GeoLiteCity.dat;
+    # geoip_proxy_recursive on;
+
+    # lua section to return proper error codes when custom pages are used
+    lua_package_path '/usr/local/openresty/site/lualib/?.lua;/usr/local/openresty/lualib/?.lua;/usr/local/openresty/sg/?.lua;;';
+    lua_code_cache on;
+
+    lua_shared_dict persistent_storage 64m; # For lua-resty-waf only
+
+    init_by_lua_block {
+        -- require("error_page")
+
+        -- use resty.core for performance improvement, see the status note above
+        require "resty.core"
+
+        -- require the base module
+        local lua_resty_waf = require "resty.waf"
+
+        -- perform some preloading and optimization
+        lua_resty_waf.init()
+    }
+
+    sendfile            on;
+    aio                 threads;
+    tcp_nopush          on;
+    tcp_nodelay         on;
+
+    log_subrequest      on;
+
+    reset_timedout_connection on;
+
+    keepalive_timeout  {{ $http.KeepAlive }}s;
+    keepalive_requests {{ $http.KeepAliveRequests }};
+
+    client_header_buffer_size       {{ $http.ClientHeaderBufferSize }};
+    large_client_header_buffers     {{ $http.LargeClientHeaderBuffers }};
+    client_body_buffer_size         {{ $http.ClientBodyBufferSize }};
+
+    http2_max_field_size            {{ $http.HTTP2MaxFieldSize }};
+    http2_max_header_size           {{ $http.HTTP2MaxHeaderSize }};
+
+    types_hash_max_size             2048;
+    server_names_hash_max_size      {{ $http.ServerNameHashMaxSize }};
+    server_names_hash_bucket_size   {{ $http.ServerNameHashBucketSize }};
+    map_hash_bucket_size            {{ $http.MapHashBucketSize }};
+
+    variables_hash_bucket_size      {{ $http.VariablesHashBucketSize }};
+    variables_hash_max_size         {{ $http.VariablesHashMaxSize }};
+
+    underscores_in_headers          {{ if $http.EnableUnderscoresInHeaders }}on{{ else }}off{{ end }};
+    ignore_invalid_headers          {{ if $http.IgnoreInvalidHeaders }}on{{ else }}off{{ end }};
+
+    include /usr/local/openresty/nginx/conf/mime.types;
+    default_type text/html;
+    gzip on;
+    gzip_comp_level 9;
+    gzip_http_version 1.1;
+    gzip_min_length 256;
+    gzip_types {{ $http.GzipTypes }};
+    gzip_proxied any;
+
+    server_tokens {{ if $http.ShowServerTokens }}on{{ else }}off{{ end }};
+
+    # disable warnings
+    uninitialized_variable_warn off;
+
+    {{ if $http.DisableAccessLog }}
+    access_log off;
+    {{ else }}
+    access_log /var/log/nginx/access.log upstreaminfo;
+    {{ end }}
+
+    error_log  /var/log/nginx/error.log;
+
+    {{ buildResolvers }}
+    
+    {{/* Whenever nginx proxies a request without a "Connection" header, the "Connection" header is set to "close" */}}
+    {{/* when making the target request.  This means that you cannot simply use */}}
+    {{/* "proxy_set_header Connection $http_connection" for WebSocket support because in this case, the */}}
+    {{/* "Connection" header would be set to "" whenever the original request did not have a "Connection" header, */}}
+    {{/* which would mean no "Connection" header would be in the target request.  Since this would deviate from */}}
+    {{/* normal nginx behavior we have to use this approach. */}}
+    # Retain the default nginx handling of requests without a "Connection" header
+    map $http_upgrade $connection_upgrade {
+        default          upgrade;
+        ''               close;
+    }
+
+    # trust http_x_forwarded_proto headers correctly indicate ssl offloading
+    map $http_x_forwarded_proto $pass_access_scheme {
+        default          $http_x_forwarded_proto;
+        ''               $scheme;
+    }
+
+    map $http_x_forwarded_port $pass_server_port {
+       default           $http_x_forwarded_port;
+       ''                $server_port;
+    }
+
+    map $pass_access_scheme $the_x_forwarded_for {
+       default           $remote_addr;
+       https             $proxy_protocol_addr;
+    }
+
+    map $pass_access_scheme $the_real_ip {
+       default           $remote_addr;
+       https             $proxy_protocol_addr;
+    }
+
+    # Map a response error watching the header Content-Type
+    map $http_accept $httpAccept {
+        default          html;
+        application/json json;
+        application/xml  xml;
+        text/plain       text;
+    }
+
+    map $httpAccept $httpReturnType {
+        default          text/html;
+        json             application/json;
+        xml              application/xml;
+        text             text/plain;
+    }
+
+    # Obtain best http host
+    map $http_host $best_http_host {
+        default          $http_host;
+        ''               $host;
+    }
+
+    server_name_in_redirect off;
+    port_in_redirect        off;
+
+    ssl_protocols {{ $http.SSLProtocols }};
+
+    # turn on session caching to drastically improve performance
+    {{ if $http.SSLSessionCache }}
+    ssl_session_cache builtin:1000 shared:SSL:{{ $http.SSLSessionCacheSize }};
+    ssl_session_timeout {{ $http.SSLSessionTimeout }};
+    {{ end }}
+
+    # allow configuring ssl session tickets
+    ssl_session_tickets {{ if $http.SSLSessionTickets }}on{{ else }}off{{ end }};
+
+    # slightly reduce the time-to-first-byte
+    ssl_buffer_size {{ $http.SSLBufferSize }};
+
+    {{ if not (empty $http.SSLCiphers) }}
+    # allow configuring custom ssl ciphers
+    ssl_ciphers '{{ $http.SSLCiphers }}';
+    ssl_prefer_server_ciphers on;
+    {{ end }}
+
+    ssl_ecdh_curve {{ $http.SSLECDHCurve }};
+
+    # In case of errors try the next upstream server before returning an error
+    proxy_next_upstream                     error timeout invalid_header http_502 http_503 http_504;
+
+    proxy_ssl_session_reuse on;
+
+
+   {{ if $http.UseProxyProtocol }}
+    map $http_x_forwarded_for $the_real_ip {
+        default          $http_x_forwarded_for;
+        ''               $proxy_protocol_addr;
+    }
+    {{ else }}
+    map $http_x_forwarded_for $the_real_ip {
+        default          $http_x_forwarded_for;
+        ''               $realip_remote_addr;
+    }
+    {{ end }}
+
+    log_format log {{ $http.LogFormat }}
+
+    {{ $backlogSize := $http.BacklogSize }}
+    {{ range $index, $server := $servers }}
+
+    {{/* Domain Redirect Block */}}
+    {{ if not (emptyMap $server.Domain_redirect)  }}
+    {{ range $src_domain, $dst_domain := $server.Domain_redirect }}
+    server {
+        listen 480 {{ if $http.UseProxyProtocol }} proxy_protocol {{ end }};
+    
+        set $proxy_upstream_name "-";
+
+        {{/* This listener must always have proxy_protocol enabled, because the SNI listener forwards on source IP info in it. */}}
+        {{ if not (empty $server.SSLCertificate) }}listen 4443 ssl {{ if $http.UseHTTP2 }}http2{{ end }} {{ if $http.UseProxyProtocol }} proxy_protocol {{ end }};
+        
+        {{/* comment PEM sha is required to detect changes in the generated configuration and force a reload */}}
+        ssl_certificate                         {{ $server.SSLCertificate }};
+        ssl_certificate_key                     {{ $server.SSLCertificate }};
+        {{ end }}
+
+        {{/* Disable because it not works with lua ..... Investigate later*/}}
+        # {{/* if (and (not (empty $server.SSLCertificate)) $http.HSTS) */}}
+        # more_set_headers                        "Strict-Transport-Security: max-age={{ $http.HSTSMaxAge }};
+        # {{/* end */}}
+
+        ssl_stapling off;
+        ssl_stapling_verify off;
+
+        server_name {{ $src_domain }};
+        rewrite ^/(.*)$ $pass_access_scheme://{{ $dst_domain }}/$1 permanent;
+    }   
+    {{ end }}
+    {{ end }}
+
+    
+    {{/* Normal Block */}}
+    {{ if (emptyMap $server.Domain_redirect) }}
+    server {
+        server_name {{with $server.Domains}} {{range .}} {{.}} {{end}} {{end}} ; 
+        listen 480 {{ if $http.UseProxyProtocol }} proxy_protocol {{ end }};
+    
+        set $proxy_upstream_name "-";
+
+        {{/* This listener must always have proxy_protocol enabled, because the SNI listener forwards on source IP info in it. */}}
+        {{ if not (empty $server.SSLCertificate) }}listen 4443 ssl {{ if $http.UseHTTP2 }}http2{{ end }} {{ if $http.UseProxyProtocol }} proxy_protocol {{ end }};
+        
+        {{/* comment PEM sha is required to detect changes in the generated configuration and force a reload */}}
+        ssl_certificate                         {{ $server.SSLCertificate }};
+        ssl_certificate_key                     {{ $server.SSLCertificate }};
+        {{ end }}
+
+        {{/* Disable because it not works with lua ..... Investigate later*/}}
+        # {{/* if (and (not (empty $server.SSLCertificate)) $http.HSTS) */}}
+        # more_set_headers                        "Strict-Transport-Security: max-age={{ $http.HSTSMaxAge }};
+        # {{/* end */}}
+
+        ssl_stapling off;
+        ssl_stapling_verify off;
+
+        location / {
+
+            access_by_lua_block {
+                local lrw = require "resty.waf"
+                local waf = lrw:new()
+
+                -- ACTIVE/INACTIVE/SIMULATE(test rule )
+                waf:set_option("mode", "{{ $server.Waf.Mode }}")
+
+                waf:set_option("debug", {{ $server.Waf.LogDebug }})
+
+                waf:set_option("debug_log_level", {{ $server.Waf.LogLevel }})
+                waf:set_option("event_log_level", {{ $server.Waf.EventLogLevel }})
+                waf:set_option("event_log_altered_only", false)
+
+                -- Add more infor to event log
+                {{with $server.Waf.LogFieldsAddition}} {{range .}}
+                waf:set_option("event_log_ngx_vars", "{{ . }}")
+                {{end}}{{end}}
+
+                waf:set_option("event_log_request_arguments", true)
+                waf:set_option("event_log_request_body", {{ $server.Waf.EventLogRequestBody }})
+                waf:set_option("event_log_request_headers", true)
+                waf:set_option("req_tid_header", true)
+
+                waf:set_option("allow_unknown_content_types", true)
+
+                -- defines buffer to hold events logs before flush
+                waf:set_option("event_log_buffer_size", {{ $server.Waf.EventLogBufferSize }} )
+                -- flush the event log buffer every 30 seconds
+                waf:set_option("event_log_periodic_flush", 30)
+                waf:set_option("event_log_target", "file") -- socket(support only one address),error(nginx error log, default),file
+                waf:set_option("event_log_target_path", "/var/log/nginx/nginx_event.log")
+
+                waf:set_option("score_threshold", 1)
+                
+                -- waf:set_option("ignore_rule", 21006)
+
+                waf:exec()
+            }
+
+            log_by_lua_block {
+                local lrw = require "resty.waf"
+                local waf = lrw:new()
+                waf:write_log_events()
+            }
+
+            # {{ if $server.EnableCORS }}
+            # {{ template "CORS" }}
+            # {{ end }}
+
+            client_max_body_size                    "{{ $server.BodySize }}";
+
+            proxy_set_header Host                   $best_http_host;
+
+            # Allow websocket connections
+            proxy_set_header                        Upgrade           $http_upgrade;
+            proxy_set_header                        Connection        $connection_upgrade;
+
+            proxy_set_header X-Real-IP              $the_real_ip;
+            proxy_set_header X-Forwarded-For        $the_x_forwarded_for;
+            proxy_set_header X-Forwarded-Host       $best_http_host;
+            proxy_set_header X-Forwarded-Proto      $pass_access_scheme;
+            proxy_set_header X-Original-URI         $request_uri;
+            proxy_set_header X-Scheme               $pass_access_scheme;
+
+            # mitigate HTTPoxy Vulnerability
+            # https://www.nginx.com/blog/mitigating-the-httpoxy-vulnerability-with-nginx/
+            proxy_set_header Proxy                  "";
+
+            # Custom headers
+            {{ range $k, $v := $server.ProxySetHeaders }}
+            proxy_set_header {{ $k }}                    "{{ $v }}";
+            {{ end }}
+
+            proxy_connect_timeout                   {{ $server.ProxyConnectTimeout }}s;
+            proxy_send_timeout                      {{ $server.ProxySendTimeout }}s;
+            proxy_read_timeout                      {{ $server.ProxyReadTimeout }}s;
+
+            proxy_redirect                          off;
+            proxy_buffering                         off;
+            proxy_buffer_size                       "{{ $server.ProxyBufferSize }}";
+            proxy_buffers                           4 "{{ $server.ProxyBufferSize }}";
+
+            proxy_http_version                      1.1;
+            proxy_pass                              http://127.0.0.1;
+        }
+    }
+    {{ end }}
+    {{ end }}
+
+    server {
+        listen 81;
+        server_name __;
+        location = /check {
+            root /var/www/html/;
+            index check;
+        }
+    }
+}
+
+
+{{/* CORS support from https://michielkalkman.com/snippets/nginx-cors-open-configuration.html */}}
+{{ define "CORS" }}
+     if ($request_method = 'OPTIONS') {
+        add_header 'Access-Control-Allow-Origin' '*';
+        #
+        # Om nom nom cookies
+        #
+        add_header 'Access-Control-Allow-Credentials' 'true';
+        add_header 'Access-Control-Allow-Methods' 'GET, PUT, POST, DELETE, OPTIONS';
+        #
+        # Custom headers and headers various browsers *should* be OK with but aren't
+        #
+        add_header 'Access-Control-Allow-Headers' 'DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization';
+        #
+        # Tell client that this pre-flight info is valid for 20 days
+        #
+        add_header 'Access-Control-Max-Age' 1728000;
+        add_header 'Content-Type' 'text/plain charset=UTF-8';
+        add_header 'Content-Length' 0;
+        return 204;
+     }
+     set $cors_method 0;
+     if ($request_method = 'GET') {
+        set $cors_method 1;
+     }
+     if ($request_method = 'PUT') {
+        set $cors_method 1;
+     }
+     if ($request_method = 'POST') {
+        set $cors_method 1;
+     }
+     if ($request_method = 'DELETE') {
+        set $cors_method 1;
+     }
+
+     if ($cors_method = 1) {
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Credentials' 'true';
+        add_header 'Access-Control-Allow-Methods' 'GET, PUT, POST, DELETE, OPTIONS';
+        add_header 'Access-Control-Allow-Headers' 'DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization';
+     }
+{{ end }}
