@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-template
+  namespace: kube-system
+data:
+  nginx_template_configmap: |-
+{{ .Values.nginx_ingress_template | indent 3 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-template
+  namespace: kube-system
+data:
+  nginx_waf_template: |-
+{{ .Values.nginx_waf_template | indent 3 }}

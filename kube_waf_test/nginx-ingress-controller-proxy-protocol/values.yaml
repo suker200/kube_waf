@@ -4,7 +4,7 @@
 replicaCount: 1
 env: prd
 image: gcr.io/google_containers/nginx-ingress-controller:0.9.0-beta.8
-WAFimage: suker200/nginx_gateway:kube_waf
+WAFimage: suker200/nginx_gateway:kube_waf_2
 # WAFimage: suker200/nginx-test
 
 terminationGracePeriodSeconds: 230
@@ -49,7 +49,7 @@ volumes:
     - mountPath: /usr/local/openresty/sg
       name: nginx-lua
     - mountPath: /config
-      name: nginx-ingress-controller-proxy-protocol-config-watcher
+      name: nginx-ingress-controller-proxy-protocol-test-config-watcher
     - mountPath: /etc/nginx/template
       name: nginx-waf-proxy-protocol-template
       readOnly: true
@@ -78,9 +78,9 @@ volumes:
     - name: nginx-lua
       hostPath:
         path: /data/nginx/lua
-    - name: nginx-ingress-controller-proxy-protocol-config-watcher
+    - name: nginx-ingress-controller-proxy-protocol-test-config-watcher
       configMap:
-        name: nginx-ingress-controller-proxy-protocol-config-watcher
+        name: nginx-ingress-controller-proxy-protocol-test-config-watcher
         items:
         - key: config
           path: config.yaml
@@ -981,6 +981,7 @@ nginx_ingress_template: |-
                 {{ end }}
 
                 add_header Upstream-Info                $upstream_addr always;
+                add_header Upstream-Status              $upstream_status always;
             }
             {{ end }}
 

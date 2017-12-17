@@ -1,4 +1,4 @@
-# Kubernetes Web Application Firewall
+9# Kubernetes Web Application Firewall
 
 # Diagram flow
 
@@ -35,7 +35,7 @@
 	+ nginx-config-watcher disable listen on TCP 9999
 	+ ELB (Nginx) health check over TCP 9999 recieves refuse response from TCP 9999, and detach this pod from ELB
 
-- Cause of when ELB wasn't support multi certs, so we run ELB with Proxy-Protocol, so we must enable it via CRD when config domain point to this ELB. You can check the config in chart folder
+- Cause of when ELB didn't support multi certs, so we run ELB with Proxy-Protocol, so we must enable it via CRD when config domain point to this ELB. You can check the config in chart folder
 
 - list CRD info (list certs info):
 	+ kubectl -n devops get nginxcerts 
@@ -80,6 +80,15 @@ docker build -t kube_waf -f Dockerfile_watcher
 kubectl create -f charts/crd.yaml
 ```
 
-- Update helm chart (We using helm chart for deploying application). You can found it in charts folder
+- Update helm chart (We using helm chart for deploying application). You can find it in charts folder
+
+# Test
+- Requirement:
+	+ virtualbox
+	+ minikube
+	+ kubectl
+	+ helm
+	
+- run: cd kube_waf_test && sh -x test.sh
 
 - we can test with minikube :) 

@@ -12,8 +12,8 @@ spec:
     ssl-secret: test-cert # your secret cert name in test_cert_secret.yaml
     domains: 
       - test.suker200.com # your domain which serve over https
-    domain_redirect:
-      test_2.suker200.com: test.suker200.com # which domain you want to redirect
+    # domain_redirect:
+    #   test_2.suker200.com: test.suker200.com # which domain you want to redirect
     proxy-connect-timeout: 312
     proxy-send-timeout: 312
     proxy-read-timeout: 312
@@ -39,6 +39,4 @@ spec:
       application/vnd.ms-fontobject
       application/x-font-ttf
       application/x-web-app-manifest+json
-      hehe
-      ohoho
     waf-event-log-buffer-size: 1000000

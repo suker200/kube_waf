@@ -4,7 +4,7 @@ kind: Deployment
 metadata:
   name: {{ .Chart.Name }}
   labels:
-    app: {{ .Chart.Name }} 
+    app: {{ .Chart.Name }}
   namespace: kube-system
 spec:
   replicas: {{ .Values.replicaCount | default 1 }}
@@ -86,7 +86,7 @@ spec:
 {{ end }}
         args:
         - /nginx-ingress-controller
-        - --default-backend-service=$(POD_NAMESPACE)/{{ .Chart.Name }}-default-http-backend
+        - --default-backend-service=$(POD_NAMESPACE)/{{ .Chart.Name }}-default-backend
         - --configmap=$(POD_NAMESPACE)/{{ .Chart.Name }}-nginx-load-balancer-conf
         # - --kubeconfig=/etc/kubernetes/kubeconfig
         - --ingress-class={{ .Values.IngressType }}
@@ -103,9 +103,9 @@ spec:
         {{ end }}
         volumeMounts:
 {{ .Values.volumes.ingress | indent 8 }}
-        ports:
-        - containerPort: 80
-          hostPort: {{ .Values.HostPort }}
+        # ports:
+        # - containerPort: 80
+        #   hostPort: {{ .Values.HostPort }}
         readinessProbe:
           httpGet:
             path: /healthz
@@ -142,3 +142,19 @@ spec:
   maxReplicas: {{ .Values.autoScaling.maxReplicas | default 10 }}
   targetCPUUtilizationPercentage: {{ .Values.autoScaling.targetCPUUtilizationPercentage | default 80 }}
 {{ end -}}
+###### Service: for test only
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: {{ .Chart.Name }}
+  namespace: kube-system
+spec:
+  type: NodePort
+  ports:
+  - port: 4443
+    targetPort: 4443
+  selector:
+    app: {{ .Chart.Name }}
