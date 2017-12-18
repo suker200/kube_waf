@@ -10,7 +10,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Chart.Name }}-template
+  name: {{ .Chart.Name }}-waf-template
   namespace: kube-system
 data:
   nginx_waf_template: |-

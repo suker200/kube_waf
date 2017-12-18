@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# minikube start --memory=4096 --kubernetes-version v1.8.5 --bootstrapper kubeadm
+minikube start --memory=4096 --kubernetes-version v1.8.5 --bootstrapper kubeadm
 
 # this for loop waits until kubectl can access the api server that Minikube has created
 for i in {1..300}; do # timeout for 5 minutes
@@ -10,7 +10,7 @@ for i in {1..300}; do # timeout for 5 minutes
 	fi
 	
 	sleep 2
-
+	
 	if [ $i -eq 300 ]; then
 		echo "Minikube start timeout"
 		exit 1
@@ -40,11 +40,6 @@ done
 # Create CRD 
 kubectl apply -f crd.yaml
 
-# Gen test cert
-sh gen_secret_cert_test.sh test_cert test.suker200.com
-
-kubectl apply -f cert_secret.yaml
-
 # Deploy kube_waf
 helm upgrade -i --namespace=kube-system nginx-ingress-controller-proxy-protocol nginx-ingress-controller-proxy-protocol
 
@@ -63,6 +58,11 @@ for i in {1..300}; do
 	fi
 
 done
+
+# Gen test cert
+sh gen_secret_cert_test.sh test_cert test.suker200.com
+
+kubectl apply -f cert_secret.yaml
 
 # Deploy nginx application
 kubectl apply -f nginx.yaml
