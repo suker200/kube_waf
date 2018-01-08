@@ -112,4 +112,8 @@ spec:
       application/vnd.ms-fontobject
       application/x-font-ttf
       application/x-web-app-manifest+json
-    waf-event-log-buffer-size: 1000000
+    waf:
+      waf-event-log-buffer-size: 1000000
+    mirror:
+      mirror: true
+      mirror_destination: test.suker200.com

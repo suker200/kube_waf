@@ -6,7 +6,7 @@ FROM alpine:latest
 MAINTAINER Evan Wies <evan@neomantra.net>
 
 # Docker Build Arguments
-ARG RESTY_VERSION="1.11.2.5"
+ARG RESTY_VERSION="1.13.6.1"
 ARG RESTY_OPENSSL_VERSION="1.0.2j"
 ARG RESTY_PCRE_VERSION="8.39"
 ARG RESTY_J="1"
@@ -148,6 +148,8 @@ COPY nginx/nginx_config/nginx.conf /etc/nginx/
 
 COPY postStart.sh /
 RUN chmod +x /postStart.sh
+
+COPY ping.html /var/www/html/
 
 ## nginx-config-watcher binary
 COPY nginx-config-watcher /

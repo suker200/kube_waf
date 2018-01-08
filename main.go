@@ -228,12 +228,22 @@ func HealthCheckIngress() {
 		if err == nil {
 			if resp.StatusCode == 200 {
 				go TcpListen()
+				go NginxHealthCheck()
 				break
 			}
 		}
 		time.Sleep(time.Duration(1) * time.Second)
 	}
 
+}
+
+func NginxHealthCheck() {
+	for {
+		if ok := CheckTerminated(); ok {
+			fmt.Print("We remove ping.html for terminated process")
+			os.Remove("/var/www/html/ping.html")
+		}
+	}
 }
 
 func TcpListen() {
@@ -292,7 +302,6 @@ func main() {
 	} else {
 		APISConfig = APISInClusterConfig()
 		Config = InClusterConfig()
-
 	}
 
 	// go TcpListen()

@@ -6,12 +6,49 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"regexp"
 )
+
+var module_requirement = map[string]string{
+	"mirror": "1.13",
+}
 
 const (
 	binary = "/usr/local/openresty/bin/openresty"
 	config = "/etc/nginx/nginx.conf"
+
 )
+
+func NginxMirrorModuleCheck() bool {
+	fmt.Println("Check nginx mirror module support")
+	out, err := exec.Command(binary, "-v").CombinedOutput()
+	if err != nil {
+		fmt.Sprintf(`
+-------------------------------------------------------------------------------
+Error: %v
+%v
+-------------------------------------------------------------------------------
+`, err, string(out))
+		return false
+	}
+
+	r, _ := regexp.Compile(module_requirement["mirror"])
+	if r.MatchString(string(out)) {
+		fmt.Println(`
+-------------------------------------------------------------------------------
+nginx mirror support: true
+-------------------------------------------------------------------------------
+`)
+		return true
+	} else {
+		fmt.Println(`
+-------------------------------------------------------------------------------
+nginx mirror support: false
+-------------------------------------------------------------------------------
+`)
+		return false
+	}
+}
 
 func NginxConfigTestOnly() error {
 	out, err := exec.Command(binary, "-t", "-c", config).CombinedOutput()

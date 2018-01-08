@@ -264,7 +264,52 @@ http {
         ssl_stapling off;
         ssl_stapling_verify off;
 
+        {{ if and mirrorModuleCheck $server.Mirror.Enable }}
+        location /mirror-url {
+            internal;
+            client_max_body_size                    "{{ $server.BodySize }}";
+
+            proxy_set_header Host                   $best_http_host;
+
+            # Allow websocket connections
+            proxy_set_header                        Upgrade           $http_upgrade;
+            proxy_set_header                        Connection        $connection_upgrade;
+
+            proxy_set_header X-Real-IP              $the_real_ip;
+            proxy_set_header X-Forwarded-For        $the_x_forwarded_for;
+            proxy_set_header X-Forwarded-Host       $best_http_host;
+            proxy_set_header X-Forwarded-Proto      $pass_access_scheme;
+            proxy_set_header X-Original-URI         $request_uri;
+            proxy_set_header X-Scheme               $pass_access_scheme;
+
+            # mitigate HTTPoxy Vulnerability
+            # https://www.nginx.com/blog/mitigating-the-httpoxy-vulnerability-with-nginx/
+            proxy_set_header Proxy                  "";
+
+            # Custom headers
+            {{ range $k, $v := $server.ProxySetHeaders }}
+            proxy_set_header {{ $k }}                    "{{ $v }}";
+            {{ end }}
+
+            proxy_connect_timeout                   {{ $server.ProxyConnectTimeout }}s;
+            proxy_send_timeout                      {{ $server.ProxySendTimeout }}s;
+            proxy_read_timeout                      {{ $server.ProxyReadTimeout }}s;
+
+            proxy_redirect                          off;
+            proxy_buffering                         off;
+            proxy_buffer_size                       "{{ $server.ProxyBufferSize }}";
+            proxy_buffers                           4 "{{ $server.ProxyBufferSize }}";
+
+            proxy_http_version                      1.1;
+
+            proxy_pass http://127.0.0.1$request_uri;
+        }
+        {{end}}
+
         location / {
+            {{ if and mirrorModuleCheck $server.Mirror.Enable }}
+            mirror /mirror-url;
+            {{end}}
 
             access_by_lua_block {
                 local lrw = require "resty.waf"

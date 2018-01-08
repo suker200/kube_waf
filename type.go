@@ -103,7 +103,13 @@ type Nginx_Server_Config struct {
 	ProxyReadTimeout    int               `json:"proxy-read-timeout, omitempty"`
 	ProxyBufferSize     string            `json:"proxy-buffer-size, omitempty"`
 	EnableCORS          string            `json:"enable-cors, omitempty"`
-	Waf                 Waf_Config
+	Mirror				Mirror_Config	  `json:"mirror, omitempty"`
+	Waf                 Waf_Config		  `json:"waf, omitempty"`
+}
+
+type Mirror_Config struct {
+	Enable 				bool	`json:"mirror, omitempty"`
+	Destination 		string	`json:"mirror_destination, omitempty"`
 }
 
 type Waf_Config struct {

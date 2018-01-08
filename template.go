@@ -117,6 +117,7 @@ var (
 			return true
 		},
 		"buildResolvers": buildResolvers,
+		"mirrorModuleCheck": NginxMirrorModuleCheck,
 	}
 )
 
