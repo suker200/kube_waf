@@ -1,8 +1,8 @@
-9# Kubernetes Web Application Firewall
+# Kubernetes Web Application Firewall
 
-# Diagram flow
+# Diagram flow :
 
-![alt text](https://raw.githubusercontent.com/suker200/kube_waf/master/kube_waf_2.png)
+![alt text](https://git.linkplatforms.com/devops/k8s/kube-waf/raw/master/kube_waf_2.png)
 
 # Requirement:
  - k8s 1.7
@@ -17,7 +17,7 @@
 
 # Elements:
  - Nginx WAF core https://github.com/p0pr0ck5/lua-resty-waf (Big thanks to p0pr0ck5)
- - Nginx Config Watcher: watching and generate Certs + Nginx Config 
+ - Nginx Config Watcher: watching and generate Certs + Nginx Config
  - k8s CRD (Custom Resource Definition)
 
 # Target:
@@ -35,12 +35,13 @@
 	+ nginx-config-watcher disable listen on TCP 9999
 	+ ELB (Nginx) health check over TCP 9999 recieves refuse response from TCP 9999, and detach this pod from ELB
 
-- Cause of when ELB didn't support multi certs, so we run ELB with Proxy-Protocol, so we must enable it via CRD when config domain point to this ELB. You can check the config in chart folder
+=======
+- Cause of when ELB wasn't support multi certs, so we run ELB with Proxy-Protocol, so we must enable it via CRD when config domain point to this ELB. You can check the config in chart folder
 
 - list CRD info (list certs info):
-	+ kubectl -n devops get nginxcerts 
+	+ kubectl -n devops get nginxcerts
 
-Note: in charts/crd.yaml + charts/values.yaml we defined namespace = devops 
+Note: in charts/crd.yaml + charts/values.yaml we defined namespace = devops
 
 # Usage:
 - Build image
@@ -51,7 +52,7 @@ Note: in charts/crd.yaml + charts/values.yaml we defined namespace = devops
 	+ cert_base64=$(cat test_cert_KEY.pem >> test_cert.pem && cat test_cert.pem | base64 "
 	+ update $(cert_base64) content to scripts/test_cert_secret.yaml
 	+ kubect apply -f  scripts/test_cert_secret.yaml
-	+ update host nginx config scripts/domain_config.yaml 
+	+ update host nginx config scripts/domain_config.yaml
 	+ kubectl apply -f scripts/domain_config.yaml
 - Update your service with k8s ingress as normal
 
