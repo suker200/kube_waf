@@ -1,4 +1,4 @@
-9# Kubernetes Web Application Firewall
+# Kubernetes Web Application Firewall
 
 # Diagram flow
 
