@@ -1,0 +1,42 @@
+# From example_rules/example_frequency.yaml
+es_host: 127.0.0.1
+es_port: 9200
+
+name: MisfitStore-WAFAlert
+type: frequency
+index: filebeat-misfit-store-*-%Y.%m.%d
+use_strftime_index: true
+verify_certs: false
+doc_type: doc
+num_events: 1
+realert:
+  minutes: 15
+timeframe:
+  minutes: 15
+
+aggregation:
+  minutes: 1
+
+aggregation_key: 'request_headers.x-forwarded-for'
+
+summary_table_fields:
+  - request_headers.x-forwarded-for
+  - alerts.msg
+
+filter:
+- query:
+    query_string:
+      query: "alerts.id: *"
+
+include:
+  - alerts
+  - request_headers.x-forwarded-for
+  - _id
+
+alert_text_args:
+  - alerts
+  - request_headers.x-forwarded-for
+  - _id
+
+
+alert: "elastalert_modules.run_alerts.AwesomeNewAlerter"

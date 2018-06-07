@@ -1,0 +1,5 @@
+elastalert
+elasticsearch>=5.0.0
+requests[security]
+pyopenssl
+cryptography

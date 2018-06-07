@@ -1,0 +1,12 @@
+filebeat.prospectors:
+- paths:
+   - /var/log/mount-share/nginx_event.log
+   - /var/log/mount-share/kube_waf_agent.log
+  input_type: log
+  json.keys_under_root: true
+  json.add_error_key: true
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  template.name: filebeat
+  template.path: filebeat.template.json

@@ -1,0 +1,16 @@
+etcdctl user add root
+etcdctl auth enable
+etcdctl -u root:root role revoke guest -path '/*' -readwrite
+
+etcdctl user add waf_agent
+etcdctl -u root:root role add waf_agent
+etcdctl -u root:root role grant waf_agent -path '/waf/*' -read
+etcdctl -u root:root user grant --roles waf_agent waf_agent
+
+
+1/ set user/pass
+2/ enable auth
+
+
+## Put config to etcd
+curl -X PUT  http://127.0.0.1:4001/v2/keys/waf/nginx.conf --data-urlencode value@nginx_env.conf

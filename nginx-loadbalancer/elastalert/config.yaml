@@ -1,0 +1,10 @@
+es_host: 127.0.0.1
+es_port: 9200
+writeback_index: elastalert_status
+buffer_time: 
+  minutes: 15
+run_every: 
+ seconds: 10
+rules_folder: rules
+alert_time_limit: #Retry for failed alert
+  minutes: 1

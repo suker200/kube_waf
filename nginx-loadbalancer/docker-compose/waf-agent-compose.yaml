@@ -1,0 +1,79 @@
+version: '2'
+services:
+  waf:
+    restart: on-failure
+    container_name: misfit-waf
+    image: 819895241319.dkr.ecr.us-east-1.amazonaws.com/nginx_gateway:misfit_waf
+    ports:
+      - "81:81"
+    environment:
+      - BACKEND_UPSTREAM=misfit.com
+      - BACKEND_SCHEME=https
+    volumes:
+      - /tmp/filebeat/log/mount-share:/var/log/nginx
+      - nginx-tmpl:/etc/nginx/
+      # - nginx-web-dir:/var/www/html
+  # fluentd:
+  #   image: suker200/fluentd-elasticsearch:latest
+  #   volumes:
+  #     - /tmp/fluentd/etc:/fluentd/etc
+  #     - /tmp/fluentd/log:/var/log
+  #   links:
+  #     - "elasticsearch"
+  #   environment:
+  #     - FLUENTD_CONF=fluentd.conf
+  #     - FLUENTD_OPT=-vv
+  filebeat:
+    restart: on-failure
+    image: docker.elastic.co/beats/filebeat:6.2.2
+    environment:
+      - project=misfit-store
+      - env=stg
+    volumes:
+      - /tmp/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - /tmp/filebeat/log:/var/log
+    links:
+      - "elasticsearch"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.2.2
+    expose:
+      - 9200
+    ports:
+      - "9200:9200"
+  kibana:
+    image: docker.elastic.co/kibana/kibana:6.2.2
+    links:
+      - "elasticsearch"
+    ports:
+      - "5601:5601"
+  # etcd:
+  #   image: quay.io/coreos/etcd:v2.3.8
+  #   command:
+  #     - --listen-client-urls=http://0.0.0.0:2379,http://0.0.0.0:4001
+  #     - --advertise-client-urls=http://0.0.0.0:2379,http://0.0.0.0:4001
+  #   ports:
+  #     - "2379:2379"
+  kube_waf_agent:
+    restart: on-failure
+    image: 819895241319.dkr.ecr.us-east-1.amazonaws.com/k8s-devops-tools:waf_agent
+    command:
+      - --command="/usr/local/openresty/nginx/sbin/nginx -c /etc/nginx/nginx.conf -s reload"
+    environment:
+      - nginx_file_key=/waf/nginx.conf
+      - nginx_file_path=/etc/nginx/nginx.conf
+      - remote_exec_container=misfit-waf
+      - log_file_path=/var/log/kube_waf_agent.log
+      - etcd_endpoint=http://172.19.0.1:2379
+      # - waf_web_dir=/var/www/html
+    # links:
+    #   - etcd
+    volumes:
+      - nginx-tmpl:/etc/nginx/
+      # - nginx-web-dir:/var/www/html
+      - /tmp/filebeat/log/mount-share:/var/log/
+      - /var/run/docker.sock:/var/run/docker.sock
+volumes:
+     nginx-tmpl: 
+     # nginx-web-dir:
+     # /tmp/fluentd/log/mount-share:

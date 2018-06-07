@@ -1,0 +1,43 @@
+# From example_rules/example_frequency.yaml
+es_host: 127.0.0.1
+es_port: 9200
+
+name: MisfitStore-SpikeRequest
+type: spike
+index: filebeat-misfit-store-*-%Y.%m.%d
+use_strftime_index: true
+# use_count_query: true
+verify_certs: false
+doc_type: doc
+
+threshold_cur: 100
+spike_type: up
+spike_height: 3 # threshold_cur = spike_height x ref
+
+realert:
+  minutes: 1
+timeframe:
+  minutes: 15
+
+aggregation:
+  minutes: 1
+
+aggregation_key: 'client_addr'
+summary_table_fields:
+  - request
+  - client_addr
+  - uri
+  - request_status
+
+filter:
+- query:
+    query_string:
+      query: "request_status: *"
+
+alert_text_args:
+  - request
+  - client_addr
+  - uri
+  - request_status
+
+alert: "elastalert_modules.run_alerts.AwesomeNewAlerter"

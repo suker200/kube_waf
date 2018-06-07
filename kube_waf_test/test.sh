@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -eset +e
 minikube start --memory=4096 --kubernetes-version v1.8.5 --bootstrapper kubeadm
 
 # this for loop waits until kubectl can access the api server that Minikube has created

@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
 	"os"
+	"github.com/fsnotify/fsnotify"
 	// rest "k8s.io/client-go/rest"
 	// k8sapi "k8s.io/kubernetes/pkg/api"
 	// "k8s.io/apimachinery/pkg/watch"

@@ -12,4 +12,3 @@ import:
 #   version: master
 - package: k8s.io/kubernetes
   version: release-1.7
-
