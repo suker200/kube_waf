@@ -1,0 +1,29 @@
+#!/bin/bash
+
+USERNAME=${ETCD_USER:-"waf_agent"}
+PASSWORD=${ETCD_PASSWORD}
+ETCD_KEY=${ETCD_NGINX_KEY:-"/waf/nginx"}
+NGINX_BIN=/usr/local/openresty/bin/openresty
+NGINX_CONF=/etc/nginx/nginx.conf
+ETCD_URL=${ETCD_ENDPOINT:-"http://127.0.0.1:2379"}
+
+#curl -s -k -q -u ${USERNAME}:${PASSWORD} -H 'Host:waf-etcd-misfit.linkplatforms.com' https://10.0.141.24/v2/keys/waf/nginx?wait=true | jq  -r '.node.value'  > /tmp/nginx.conf
+
+## First running time
+if [ ! -f /tmp/foo.txt ]; then
+	curl -s -q -u ${USERNAME}:${PASSWORD} ${ETCD_URL}/v2/keys/${ETCD_KEY} | jq  -r '.node.value'  > /tmp/nginx.conf
+	${NGINX_BIN} -c /tmp/nginx.conf -t
+	if [ $? -eq 0 ]; then
+		cp /tmp/nginx.conf ${NGINX_CONF}
+		${NGINX_BIN} -c ${NGINX_CONF} -s reload
+	fi
+fi
+
+curl -s -q -u ${USERNAME}:${PASSWORD} ${ETCD_URL}/v2/keys/${ETCD_KEY}?wait=true | jq  -r '.node.value'  > /tmp/nginx.conf
+if [ -s /tmp/nginx.conf ]; then
+	${NGINX_BIN} -c /tmp/nginx.conf -t
+	if [ $? -eq 0 ]; then
+		cp /tmp/nginx.conf ${NGINX_CONF}
+		${NGINX_BIN} -c ${NGINX_CONF} -s reload
+	fi
+fi

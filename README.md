@@ -2,7 +2,7 @@
 
 # Diagram flow :
 
-![alt text](https://git.linkplatforms.com/devops/k8s/kube-waf/raw/master/kube_waf_2.png)
+![alt text](https://raw.githubusercontent.com/suker200/kube_waf/master/kube_waf_2.png)
 
 # Requirement:
  - k8s 1.7

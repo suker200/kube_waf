@@ -55,6 +55,9 @@ ARG _RESTY_CONFIG_DEPS="--with-openssl=/tmp/openssl-${RESTY_OPENSSL_VERSION} --w
 COPY alpine_repositories /etc/apk/repositories
 
 RUN \
+    apk upgrade 
+
+RUN \
     apk add --no-cache --virtual .build-deps \
         build-base \
         curl \
@@ -71,6 +74,7 @@ RUN \
         make \
         python \
         bash
+
 RUN \ 
         apk add --no-cache \
         supervisor \
@@ -82,12 +86,13 @@ RUN \
         curl \
         pcre \
         libstdc++ \
-        dnsmasq
+        dnsmasq \
+        ca-certificates
 RUN \
     cd /tmp \
     && curl -k -fSL https://www.openssl.org/source/openssl-${RESTY_OPENSSL_VERSION}.tar.gz -o openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
     && tar xzf openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
-    && curl -k -fSL https://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
+    && curl -k -fSL https://ftp.pcre.org/pub/pcre/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
     && tar xzf pcre-${RESTY_PCRE_VERSION}.tar.gz \
     && curl -k -fSL https://openresty.org/download/openresty-${RESTY_VERSION}.tar.gz -o openresty-${RESTY_VERSION}.tar.gz \
     && tar xzf openresty-${RESTY_VERSION}.tar.gz \
@@ -144,7 +149,13 @@ RUN \
     && ln -sf /dev/stdout /usr/local/openresty/nginx/logs/access.log \
     && ln -sf /dev/stderr /usr/local/openresty/nginx/logs/error.log
 
-RUN mkdir -p /etc/nginx/certs
+RUN apk update && \
+        apk add --no-cache \
+            jq \
+            runit \
+            bash
+
+RUN mkdir -p /etc/nginx/certs /services
 COPY certs/default.pem /etc/nginx/certs/
 
 COPY nginx/lualib/prometheus.lua /usr/local/openresty/lualib/
@@ -153,6 +164,8 @@ COPY nginx/nginx_config/nginx_env.conf /nginx.conf
 
 COPY ping.html /var/www/html/
 COPY nginx/dnsmasq.conf /etc/dnsmasq.conf
+
+ADD runsv /services/
 
 COPY entrypoint_env.sh /
 RUN chmod +x /entrypoint_env.sh
